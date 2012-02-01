@@ -3,7 +3,6 @@
 	var PACK = JSON.stringify;
 	var UNPACK = JSON.parse;
 	
-	// TODO Add a re-sub feature to allow re-subscribing to all subbed channels in the event of a reconnection
 	function EventHub(socket) {
 		socket.onmessage = this._onmessage.bind(this);
 		this._socket = socket;
@@ -54,9 +53,12 @@
 				this._socket.send(PACK([0, type])); // Unsubscribe from `type`
 			}
 		},
-		
-		refreshSubs: function() {
-			
+		// Tell the server about all our listeners again
+		refresh: function() {
+			var handlers = this._handlers;
+			for(var type in handlers) {
+				this._socket.send(PACK([1, type]));
+			}
 		}
 	};
 	
