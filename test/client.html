@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Client Tests</title>
+<link rel=stylesheet href="files/mocha.css" />
+<script src="files/jquery.min.js"></script>
+<script src="files/expect.js"></script>
+<script src="files/mocha.js"></script>
+<script>
+mocha.setup('bdd');
+addEventListener('load', mocha.run, false);
+</script>
+<script src="../public/eventhub.js"></script>
+<script>
+var sendState;
+var fakeSocket = {
+	send: function(data) {
+		sendState = JSON.parse(data);
+	}
+};
+
+var eventState;
+function evtHandler() {
+	eventState = arguments;
+}
+
+var hookState;
+function hookHandler() {
+	hookState = arguments;
+}
+
+var hub;
+
+describe('EventHub', function() {
+	describe('constructor', function() {
+		it('should be constructed without errors', function() {
+			hub = new EventHub(fakeSocket);
+		});
+	});
+	
+	describe('#on()', function() {
+		it('should send a subscribe signal to the server', function() {
+			hub.on('testevent', evtHandler);
+			
+			expect(sendState[0]).to.be(1);
+			expect(sendState[1]).to.be('testevent');
+		});
+	});
+	
+	describe('#eventHook', function() {
+		it('should be set without error', function() {
+			hub.eventHook = hookHandler;
+			
+			expect(hub.eventHook).to.be(hookHandler);
+		});
+	});
+	
+	describe('#emit()', function() {
+		it('should emit an event from the server', function() {
+			fakeSocket.onmessage(JSON.stringify(['testevent', 'testdata', 'data2']));
+		});
+		it('should trigger the "on()" function we set earlier', function() {
+			expect(eventState[0]).to.be('testdata');
+			expect(eventState[1]).to.be('data2');
+		});
+		it('should trigger the "eventHook" we set earlier', function() {
+			expect(hookState[0]).to.be('testevent');
+			expect(hookState[1]).to.be('testdata');
+			expect(hookState[2]).to.be('data2');
+		});
+		
+		it('should emit a server event we haven\'t explicitly listened for', function() {
+			fakeSocket.onmessage(JSON.stringify(['otherevt', 'worm', 'food']));
+		});
+		it('should not have triggered the "on()" listener', function() {
+			expect(eventState[0]).to.be('testdata');
+			expect(eventState[1]).to.be('data2');
+		});
+		it('should have triggered the "eventHook" listener', function() {
+			expect(hookState[0]).to.be('otherevt');
+			expect(hookState[1]).to.be('worm');
+			expect(hookState[2]).to.be('food');
+		});
+	});
+	
+	describe('#removeListener()', function() {
+		it('should send an unsubscribe notice to the server', function() {
+			hub.removeListener('testevent', evtHandler);
+			
+			expect(sendState[0]).to.be(0);
+			expect(sendState[1]).to.be('testevent');
+		});
+	});
+});
+</script>
+</head>
+<body>
+<div id=mocha></div>
+</body>
+</html>
